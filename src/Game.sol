@@ -7,6 +7,8 @@ contract Game {
     address public gameOwner;
     Player[] public players;
 
+    event Winner(Player winner);
+
     constructor(address[] memory _playerAddresses) {
         gameOwner = msg.sender;
         if(_playerAddresses.length < 2) {
@@ -63,24 +65,27 @@ contract Game {
         // if all players have voted, then remove the player with the most votes.
         // todo: separate this and following 2 pieces into a function and verify logic
         if(hasAllActivePlayersVoted == true) {
-            address playerToRemove = players[0].playerAddress();
-            uint playerToRemoveVotes = 0;
+            // Shuffling the players introduces randomness to any tie votes between players with an equal number of votes
+            Player[] memory shuffledPlayers = psuedoShuffle(players);
+            address currentPlayerToRemove = shuffledPlayers[0].playerAddress();
+            uint currentPlayerToRemoveVotes = 0;
             for (uint i = 0; i < players.length; i++) {
-                if(players[i].isRemoved() == false) {
+                if(shuffledPlayers[i].isRemoved() == false) {
+                    // Count votes for the current player
                     uint votes = 0;
                     for (uint j = 0; j < players.length; j++) {
-                        if(players[j].isRemoved() == false && players[j].currentVotedPlayerToRemove() == players[i].playerAddress()) {
+                        if(shuffledPlayers[j].isRemoved() == false && shuffledPlayers[j].currentVotedPlayerToRemove() == shuffledPlayers[i].playerAddress()) {
                             votes++;
                         }
                     }
-                    if(votes > playerToRemoveVotes) {
-                        playerToRemove = players[i].playerAddress();
-                        playerToRemoveVotes = votes;
+                    if(votes > currentPlayerToRemoveVotes) {
+                        currentPlayerToRemove = shuffledPlayers[i].playerAddress();
+                        currentPlayerToRemoveVotes = votes;
                     }
                 }
             }
             for (uint i = 0; i < players.length; i++) {
-                if(players[i].playerAddress() == playerToRemove) {
+                if(players[i].playerAddress() == currentPlayerToRemove) {
                     players[i].setIsRemoved(true);
                     break;
                 }
@@ -91,8 +96,30 @@ contract Game {
                 players[i].setCurrentVotedPlayerToRemove(address(0));
             }
 
-            // Run win check
+            // Run win check - one player left
+            uint unremovedPlayers = 0;
+            Player unremovedPlayer;
+            for (uint i = 0; i < players.length; i++) {
+                if(players[i].isRemoved() == false) {
+                    unremovedPlayers++;
+                    unremovedPlayer = players[i];
+                }
+            }
+            if(unremovedPlayers == 1) {
+                // winner!
+                emit Winner(unremovedPlayer);
+            }
 
         }
+    }
+
+    function psuedoShuffle(Player[] memory array) public view returns (Player[] memory) {
+        for (uint256 i = 0; i < array.length; i++) {
+            uint256 n = i + uint256(keccak256(abi.encodePacked(block.timestamp, msg.sender, i))) % (array.length - i);
+            Player temp = array[n];
+            array[n] = array[i];
+            array[i] = temp;
+        }
+        return array;
     }
 }
