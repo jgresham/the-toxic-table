@@ -9,13 +9,13 @@ contract Game {
 
     event Winner(Player winner);
 
-    constructor(address[] memory _playerAddresses) {
+    constructor(address[] memory playerAddresses) {
         gameOwner = msg.sender;
-        if(_playerAddresses.length < 2) {
+        if(playerAddresses.length < 2) {
             revert("There must be at least 2 players to start the game");
         }
-        for(uint i = 0; i < _playerAddresses.length; i++) {
-            players.push(new Player(_playerAddresses[i]));
+        for(uint i = 0; i < playerAddresses.length; i++) {
+            players.push(new Player(playerAddresses[i]));
         }
     }
 
